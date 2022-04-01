@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 from .models import Job, JobApplied
 from .serializers import JobSerializer, JobAppliedSerializer
+import random
 
 
 # Create your views here.
@@ -13,7 +14,7 @@ class ListJobsView(APIView):
 	permission_classes = [permissions.AllowAny]
 
 	def get(self,request,format=None):
-		query = Job.objects.all()
+		query = Job.objects.filter(is_available=True)
 		jobs = JobSerializer(query,many=True)
 
 		return Response(jobs.data)
@@ -64,4 +65,31 @@ class JobsApplied(generics.ListCreateAPIView):
 		queryset = JobApplied.objects.filter(user=user)
 		return queryset
 
+class AcceptApplications(APIView):
+	permission_classes = [permissions.IsAdminUser]
 
+	def get_random_applications(self,number_of_slots,*args,**kwargs):
+		jobs_applications_id_list = JobApplied.objects.filter(job=kwargs['id']).values_list('id',flat=True)
+		random_job_applications_id_list = random.sample(list(jobs_applications_id_list),min(len(jobs_applications_id_list),number_of_slots))
+		queryset = JobApplied.objects.filter(id__in=random_job_applications_id_list)
+		print("queryset:>>>>",queryset)
+		return queryset
+
+	def get(self,request,*args,**kwargs):
+		job_id = kwargs['id']
+		return Response({'job_id': job_id})
+
+	def put(self,request,*args,**kwargs):
+		data = self.request.data
+		number_of_slots = data.pop('number_of_slots')
+		queryset = self.get_random_applications(number_of_slots,**kwargs)
+		instances = []
+		for application in queryset.iterator():
+			serializer = JobAppliedSerializer(application,data=data,partial=True)
+			serializer.is_valid(raise_exception=True)
+			serializer.save()
+			instances.append(application)
+		serializer = JobAppliedSerializer(instances,many=True)
+		return Response(serializer.data)
+
+	
