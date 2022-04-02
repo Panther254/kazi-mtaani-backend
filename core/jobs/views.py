@@ -25,9 +25,9 @@ class PostJobView(generics.CreateAPIView):
 	permission_classes = [permissions.IsAdminUser]
 
 	def post(self,request,format=None):
+		request.data._mutable=True
 		data = self.request.data
 		user_id = self.request.user.id
-
 		data['posted_by'] = user_id
 		serializer = self.get_serializer(data=data)
 		serializer.is_valid(raise_exception=True)
@@ -55,8 +55,22 @@ class RetrieveUpdateJob(generics.RetrieveUpdateAPIView):
 		obj = queryset.get(pk=self.kwargs['id'])
 		return obj
 
+class ApplyJob(generics.CreateAPIView):
+	serializer_class = JobAppliedSerializer
 
-class JobsApplied(generics.ListCreateAPIView):
+	def post(self,request,*args,**kwargs):
+		request.data._mutable=True
+		data = self.request.data
+		user = self.request.user.id
+		data['user'] = user
+		serializer = self.get_serializer(data=data)
+		serializer.is_valid(raise_exception=True)
+		serializer.save()
+		
+		return Response(serializer.data,status.HTTP_202_ACCEPTED)
+
+
+class JobsApplied(generics.ListAPIView):
 	serializer_class = JobAppliedSerializer
 	permission_classes = [permissions.IsAdminUser|IsOwnerOrReadOnly]
 
@@ -64,6 +78,7 @@ class JobsApplied(generics.ListCreateAPIView):
 		user = self.request.user
 		queryset = JobApplied.objects.filter(user=user)
 		return queryset
+
 
 class AcceptApplications(APIView):
 	permission_classes = [permissions.IsAdminUser]

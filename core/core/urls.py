@@ -25,4 +25,5 @@ urlpatterns = [
 ]
 
 
+#Ensures all routing is done only by the react application
 urlpatterns += [re_path(r'^.*', TemplateView.as_view(template_name='index.html'))]

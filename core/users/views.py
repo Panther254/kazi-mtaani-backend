@@ -6,7 +6,14 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.contrib.auth import get_user_model
 User = get_user_model()
-from .serializers import UserSerializer, UserProfileSerializer
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import smart_str,force_str, smart_bytes, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_decode,urlsafe_base64_encode
+from .utils import Util
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
+from .serializers import UserSerializer, UserProfileSerializer, ChangePasswordSerializer,ResetPasswordSerializer,SetNewPasswordSerializer
+
 
 
 # Create your views here.
@@ -101,7 +108,7 @@ class DeleteAccountView(APIView):
 			return Response({'error': 'Something went wrong trying to delete user'})
 
 class GetUsersView(APIView):
-	permission_classes = [permissions.AllowAny]
+	permission_classes = [permissions.IsAdminUser]
 
 	def get(self,request,format=None):
 		users = User.objects.all()
@@ -109,7 +116,6 @@ class GetUsersView(APIView):
 		users = UserSerializer(users,many=True)
 
 		return Response(users.data)
-
 
 
 class UserProfile(generics.RetrieveUpdateAPIView):
@@ -121,3 +127,77 @@ class UserProfile(generics.RetrieveUpdateAPIView):
 		queryset = self.filter_queryset(self.get_queryset())
 		obj = queryset.get(pk=self.request.user.id)
 		return obj
+
+class ChangePasswordView(generics.UpdateAPIView):
+	serializer_class = ChangePasswordSerializer
+	model = User
+
+	def get_object(self, queryset=None):
+	    obj = self.request.user
+	    return obj
+
+	def update(self, request, *args, **kwargs):
+	    self.object = self.get_object()
+	    serializer = self.get_serializer(data=request.data)
+
+	    if serializer.is_valid():
+	        # Check old password
+	        if not self.object.check_password(serializer.data.get("old_password")):
+	            return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+	        # set_password also hashes the password that the user will get
+	        self.object.set_password(serializer.data.get("new_password"))
+	        self.object.save()
+	        response = {
+	            'status': 'success',
+	            'code': status.HTTP_200_OK,
+	            'message': 'Password updated successfully',
+	            'data': []
+	        }
+
+	        return Response(response)
+
+	    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_protect, name='dispatch')
+class ResetPassword(APIView):
+	permission_classes = [permissions.AllowAny]
+	def post(self,request,format=None):
+		email = self.request.data['email']
+		print("email",email)
+		serializer = ResetPasswordSerializer(data=email)
+		if User.objects.filter(email=email).exists():
+			user = User.objects.get(email=email)
+			uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+			token = PasswordResetTokenGenerator().make_token(user)
+			current_site = get_current_site(request=self.request).domain
+			relative_link = reverse('reset_password_confirm',kwargs={'uidb64':uidb64,'token':token})
+			absurl = 'https://'+current_site+relative_link
+			email_body = 'Hi\nUse the link below to verify your email\n' + absurl
+			data = {'email_body': email_body,'to_email': user.email,'email_subject': 'Reset your email'}
+			Util.send_email(data)
+			return Response({'success': 'We have sent the link to reset your password'}, status.HTTP_200_OK)
+		else:
+			return Response({'error': "Account registered to this email does not exist"})
+
+
+class PasswordTokenCheck(APIView):
+	permission_classes = [permissions.AllowAny]
+	def get(self,request,uidb64,token):
+		try:
+			user_id = smart_str(urlsafe_base64_decode(uidb64))
+			user = User.objects.get(id=user_id)
+			if not PasswordResetTokenGenerator().check_token(user,token):
+				return Response({'error': 'Token is not valid. request a new one'},status.HTTP_400_BAD_REQUEST)
+			return Response({'success': 'Credentials valid', 'uidb64': uidb64, 'token': token})
+
+		except DjangoUnicodeDecodeError as identifier:
+			return Response({'error': 'Token is not valid. request a new one'},status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class SetNewPassword(APIView):
+	permission_classes = [permissions.AllowAny]
+	def put(self,request):
+		serializer = SetNewPasswordSerializer(data=self.request.data)
+		serializer.is_valid(raise_exception=True)
+		return Response({'success': 'Password reset sucessful'})

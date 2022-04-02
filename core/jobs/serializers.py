@@ -12,4 +12,4 @@ class JobSerializer(serializers.ModelSerializer):
 class JobAppliedSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = JobApplied
-		fields = '__all__'
+		exclude = ['is_accepted',]
