@@ -5,8 +5,6 @@ User = get_user_model()
 
 
 
-
-
 # Create your models here.
 class Job(models.Model):
 	FULL_TIME = "Full-time"

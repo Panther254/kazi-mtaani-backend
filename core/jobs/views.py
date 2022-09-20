@@ -4,18 +4,18 @@ from rest_framework import permissions, status, generics
 from django.contrib.auth import get_user_model
 User = get_user_model()
 from .models import Job, JobApplied
-from .serializers import JobSerializer, JobAppliedSerializer
+from .serializers import JobSerializer, JobAppliedSerializer, UpdateJobAppliedSerializers, UsersJobSerializer
 import random
 
 
 # Create your views here.
 class ListJobsView(APIView):
-	serializer_class = JobSerializer
+	serializer_class = UsersJobSerializer
 	permission_classes = [permissions.AllowAny]
 
 	def get(self,request,format=None):
 		query = Job.objects.filter(is_available=True)
-		jobs = JobSerializer(query,many=True)
+		jobs = UsersJobSerializer(query,many=True)
 
 		return Response(jobs.data)
 
@@ -35,12 +35,20 @@ class PostJobView(generics.CreateAPIView):
 
 		return Response(serializer.data,status=status.HTTP_202_ACCEPTED)
 
+class PostedJobsView(generics.ListAPIView):
+	serializer_class = JobSerializer
+	permission_classes = [permissions.IsAdminUser]
+
+	def get_queryset(self):
+		queryset = Job.objects.filter(posted_by=self.request.user)
+		return queryset
+
 class IsOwnerOrReadOnly(permissions.BasePermission):
 	def has_object_permission(self,request,view, object):
-		if self.request.method in permissions.SAFE_METHODS:
+		if request.method in permissions.SAFE_METHODS:
 			return True
 
-		return object.posted_by == self.request.user.id
+		return object.posted_by == request.user.id
 
 
 class RetrieveUpdateJob(generics.RetrieveUpdateAPIView):
@@ -59,7 +67,7 @@ class ApplyJob(generics.CreateAPIView):
 	serializer_class = JobAppliedSerializer
 
 	def post(self,request,*args,**kwargs):
-		request.data._mutable=True
+		# request.data._mutable=True
 		data = self.request.data
 		user = self.request.user.id
 		data['user'] = user
@@ -100,7 +108,7 @@ class AcceptApplications(APIView):
 		queryset = self.get_random_applications(number_of_slots,**kwargs)
 		instances = []
 		for application in queryset.iterator():
-			serializer = JobAppliedSerializer(application,data=data,partial=True)
+			serializer = UpdateJobAppliedSerializers(application,data={'is_accepted': True },partial=True)
 			serializer.is_valid(raise_exception=True)
 			serializer.save()
 			instances.append(application)

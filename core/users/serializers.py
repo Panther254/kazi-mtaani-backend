@@ -4,12 +4,13 @@ User = get_user_model()
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str,force_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode,urlsafe_base64_encode
+from django.contrib.auth.password_validation import validate_password
 
 
 class UserSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = User
-		fields = ['id','email','first_name','last_name','phone_number','national_id']
+		fields = ['id','email','first_name','last_name','phone_number','national_id','last_login']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -17,11 +18,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = User
 		exclude = ['password', 'is_superuser','groups','user_permissions','last_login']
+		read_only_fields = ['is_staff']
 
 class ChangePasswordSerializer(serializers.Serializer):
 	model = User
 	old_password = serializers.CharField(required=True)
 	new_password = serializers.CharField(required=True)
+
+	def validate_new_password(self, value):
+        validate_password(value)
+        return value
 
 
 class ResetPasswordSerializer(serializers.Serializer):
