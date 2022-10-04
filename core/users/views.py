@@ -80,9 +80,9 @@ class LoginView(APIView):
                 auth.login(request, user)
                 return Response({'success': 'Login sucessful'}, status=status.HTTP_202_ACCEPTED)
             else:
-                return Response({'error': 'Error logging in'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response({'error': 'Error logging in'}, status=status.HTTP_202_ACCEPTED)
         except:
-            return Response({'error': 'Something went wrong'})
+            return Response({'error': 'Something went wrong'},status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class LogoutView(APIView):
