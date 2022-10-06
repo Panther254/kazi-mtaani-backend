@@ -25,9 +25,9 @@ class CheckAuthenticated(APIView):
     def get(self, request, format=None):
         is_authenticated = User.is_authenticated
         if is_authenticated:
-            return Response({'is_authenticated': 'Success'})
+            return Response({'is_authenticated': True })
         else:
-            return Response({'is_authenticated': 'Error'})
+            return Response({'is_authenticated': False })
 
 
 @method_decorator(csrf_protect, name='dispatch')
@@ -41,7 +41,6 @@ class SignUpView(APIView):
         last_name = data['last_name']
         email = data['email']
         phone_number = data['phone_number']
-        residence = data['residence']
         national_id = data['national_id']
         password = data['password']
         re_password = data['re_password']
@@ -54,7 +53,7 @@ class SignUpView(APIView):
                     return Response({'error': 'The National ID is already registred'})
 
                 user = User.objects.create_user(email=email, password=password, first_name=first_name,
-                                                last_name=last_name, phone_number=phone_number, residence=residence, national_id=national_id)
+                                                last_name=last_name, phone_number=phone_number, national_id=national_id)
                 user.save()
                 content = {"success": "User created sucessfully."}
                 return Response(content, status=status.HTTP_201_CREATED)
