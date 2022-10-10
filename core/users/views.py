@@ -79,7 +79,7 @@ class LoginView(APIView):
                 auth.login(request, user)
                 return Response({'success': 'Login sucessful'}, status=status.HTTP_202_ACCEPTED)
             else:
-                return Response({'error': 'Error logging in'}, status=status.HTTP_202_ACCEPTED)
+                return Response({'error': 'Invalid email/password'}, status=status.HTTP_202_ACCEPTED)
         except:
             return Response({'error': 'Something went wrong'},status=status.HTTP_406_NOT_ACCEPTABLE)
 
@@ -148,20 +148,14 @@ class ChangePasswordView(generics.UpdateAPIView):
         if serializer.is_valid():
             # Check old password
             if not self.object.check_password(serializer.data.get("old_password")):
-                return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Wrong password."})
             # set_password also hashes the password that the user will get
             self.object.set_password(serializer.data.get("new_password"))
             self.object.save()
-            response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Password updated successfully',
-                'data': []
-            }
 
-            return Response(response)
+            return Response({'success': "Password changed successfully"})
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors)
 
 
 @method_decorator(csrf_protect, name='dispatch')
