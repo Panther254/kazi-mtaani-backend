@@ -8,6 +8,10 @@ class JobSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Job
 		fields = '__all__'
+		read_only_fields = ["applications"]
+		extra_kwargs = {
+			'applications':{ 'required': False, 'allow_blank': True, 'allow_null': True},
+		}
 
 
 class JobAppliedSerializer(serializers.ModelSerializer):

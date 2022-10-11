@@ -14,11 +14,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-	jobs_applied = serializers.StringRelatedField(many=True)
+	jobs_applied = serializers.StringRelatedField(many=True,required=False)
 	class Meta:
 		model = User
 		exclude = ['password', 'is_superuser','groups','user_permissions','last_login']
-		read_only_fields = ['is_staff']
+		read_only_fields = ['is_staff','jobs_applied']
 
 class ChangePasswordSerializer(serializers.Serializer):
 	model = User

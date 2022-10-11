@@ -20,6 +20,7 @@ class Job(models.Model):
 	job_type = models.CharField(max_length=20,choices=JOB_CHOICES,default=FULL_TIME)
 	date_posted = models.DateField(max_length=255,auto_now_add=True)
 	sector = models.CharField(max_length=255)
+	location = models.CharField(max_length=255,default="Provide location")
 	is_available = models.BooleanField(default=True)
 
 

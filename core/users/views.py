@@ -132,6 +132,17 @@ class UserProfile(generics.RetrieveUpdateAPIView):
         obj = queryset.get(pk=self.request.user.id)
         return obj
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            self.perform_update(serializer)
+            return Response({'success': "Profile updated successfully",'update': serializer.data })
+        else:
+            return Response({'error': serializer.errors})    
+        
+
 
 class ChangePasswordView(generics.UpdateAPIView):
     serializer_class = ChangePasswordSerializer

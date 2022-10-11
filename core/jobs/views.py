@@ -25,13 +25,15 @@ class PostJobView(generics.CreateAPIView):
 	permission_classes = [permissions.IsAdminUser]
 
 	def post(self,request,format=None):
-		request.data._mutable=True
 		data = self.request.data
-		user_id = self.request.user.id
-		data['posted_by'] = user_id
+		data['posted_by'] = self.request.user.id
+		data['applications'] = []
 		serializer = self.get_serializer(data=data)
-		serializer.is_valid(raise_exception=True)
-		serializer.save()
+		if serializer.is_valid():
+			serializer.save()
+		else:
+			return Response(serializer.errors)
+
 
 		return Response(serializer.data,status=status.HTTP_202_ACCEPTED)
 
@@ -71,6 +73,8 @@ class ApplyJob(generics.CreateAPIView):
 		data = self.request.data
 		user = self.request.user.id
 		data['user'] = user
+		if JobApplied.objects.filter(user__id=user,job__id=data.id).exists():
+			return Response({'error':'The job has already been applied for'})
 		serializer = self.get_serializer(data=data)
 		serializer.is_valid(raise_exception=True)
 		serializer.save()
